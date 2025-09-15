@@ -1,4 +1,14 @@
 {
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "lexigo@jortvanleenen",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
   "author": "Jort van Leenen",
   "background": {
     "scripts": [
