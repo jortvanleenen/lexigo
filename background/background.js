@@ -1,86 +1,89 @@
-const GOOGLE_SPEECH_URI = 'https://www.google.com/speech-api/v1/synthesize',
-
-    DEFAULT_HISTORY_SETTING = {
-        enabled: true
-    };
+const DEFAULT_HISTORY_SETTING = {enabled: true};
 
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    const { word, lang } = request, 
-        url = `https://www.google.com/search?hl=${lang}&q=define+${word}&gl=US`;
-    
-    fetch(url, { 
-            method: 'GET'
-        })
-        .then((response) => response.text())
-        .then((text) => {
-            const document = new DOMParser().parseFromString(text, 'text/html'),
-                content = extractMeaning(document, { word, lang });
+    const {word, lang} = request || {};
+    const term = (word || "").trim();
+    if (!term) {
+        sendResponse({content: null});
+        return true;
+    }
 
-            sendResponse({ content });
+    const langNorm = (lang || "en").toLowerCase();
 
-            content && browser.storage.local.get().then((results) => {
-                let history = results.history || DEFAULT_HISTORY_SETTING;
-        
-                history.enabled && saveWord(content)
-            });
+    const primary = () => {
+        if (!langNorm.startsWith("en")) return Promise.resolve(null);
+        const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`;
+        return fetch(url)
+            .then(r => r.ok ? r.json() : Promise.resolve(null))
+            .then(json => {
+                if (!Array.isArray(json) || !json.length) return null;
+                const entry = json[0] || {};
+                const firstMeaning = entry.meanings?.[0];
+                const def = firstMeaning?.definitions?.[0]?.definition || "";
+                if (!def) return null;
+
+                const phon = (entry.phonetics || []).find(p => p.audio || p.text) || {};
+                const audioSrc = phon.audio || null;
+
+                return {
+                    word: (entry.word || term),
+                    meaning: def.charAt(0).toUpperCase() + def.slice(1),
+                    audioSrc
+                };
+            })
+            .catch(() => null);
+    };
+
+    const fallback = () => {
+        console.log("Falling back to DDG lookup");
+        const url = `https://noai.duckduckgo.com/?t=h_&q=define+${encodeURIComponent(term)}&ia=web`;
+        return fetch(url)
+            .then(r => r.text())
+            .then(html => {
+                const doc = new DOMParser().parseFromString(html, "text/html");
+                const module = doc.querySelector(".module.ia-module--definitions");
+                if (!module) return null;
+
+                const title = module.querySelector(".module__title");
+                const wordText = title ? title.childNodes[0].textContent.trim() : term;
+
+                const defEl = module.querySelector(".module--definitions__definition");
+                const def = defEl ? defEl.textContent.trim() : "";
+                if (!def) return null;
+
+                return {
+                    word: wordText,
+                    meaning: def.charAt(0).toUpperCase() + def.slice(1),
+                    audioSrc: null
+                };
+            })
+            .catch(() => null);
+    };
+
+    primary()
+        .then(content => content ? content : fallback())
+        .then(content => {
+            sendResponse({content: content || null});
+
+            if (content) {
+                browser.storage.local.get().then(results => {
+                    const history = results.history || DEFAULT_HISTORY_SETTING;
+                    if (history.enabled) saveWord(content);
+                });
+            }
         })
+        .catch(() => sendResponse({content: null}));
 
     return true;
 });
 
-function extractMeaning (document, context) {
-    if (!document.querySelector("[data-dobid='hdw']")) { return null; }
-    
-    var word = document.querySelector("[data-dobid='hdw']").textContent,
-        definitionDiv = document.querySelector("div[data-dobid='dfn']"),
-        meaning = "";
+function saveWord(content) {
+    const word = content.word;
+    const meaning = content.meaning;
 
-    if (definitionDiv) {
-        definitionDiv.querySelectorAll("span").forEach(function(span){
-            if(!span.querySelector("sup"))
-                 meaning = meaning + span.textContent;
-        });
-    }
-
-    meaning = meaning[0].toUpperCase() + meaning.substring(1);
-
-    var audio = document.querySelector("audio[jsname='QInZvb']"),
-        source = document.querySelector("audio[jsname='QInZvb'] source"),
-        audioSrc = source && source.getAttribute('src');
-
-    if (audioSrc) {
-        !audioSrc.includes("http") && (audioSrc = audioSrc.replace("//", "https://"));
-    }
-    else if (audio) {
-        let exactWord = word.replace(/·/g, ''), // We do not want syllable seperator to be present.
-            
-        queryString = new URLSearchParams({
-            text: exactWord, 
-            enc: 'mpeg', 
-            lang: context.lang, 
-            speed: '0.4', 
-            client: 'lr-language-tts', 
-            use_google_only_voices: 1
-        }).toString();
-
-        audioSrc = `${GOOGLE_SPEECH_URI}?${queryString}`;
-    }
-
-    return { word: word, meaning: meaning, audioSrc: audioSrc };
-};
-
-function saveWord (content) {
-    let word = content.word,
-        meaning = content.meaning,
-      
-        storageItem = browser.storage.local.get('definitions');
-
-        storageItem.then((results) => {
-            let definitions = results.definitions || {};
-
-            definitions[word] = meaning;
-            browser.storage.local.set({
-                definitions
-            });
-        })
+    browser.storage.local.get('definitions').then(results => {
+        const definitions = results.definitions || {};
+        definitions[word] = meaning;
+        browser.storage.local.set({definitions});
+    });
 }

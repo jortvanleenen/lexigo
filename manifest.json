@@ -1,45 +1,38 @@
 {
-  "author": "Suraj Jain",
-
-  "manifest_version": 2,
-  "name": "Dictionary Anywhere",
-  "version": "1.2.0",
-
-  "description": "View definitions easily as you browse the web. Double-click any word to view its definition in a small pop-up bubble.",
-
-  "icons": {
-    "48": "icons/Dictionary-48.png",
-    "64": "icons/Dictionary-64.png",
-    "96": "icons/Dictionary-96.png",
-    "128": "icons/Dictionary-128.png"
-  },
-
-  "options_ui": {
-    "page": "options/options.html",
-    "browser_style": true,
-    "chrome_style": true
-  },
-
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": [
-        "common/browser-polyfill.js",
-        "content_scripts/dictionary.js"
-      ]
-    }
-  ],
-
+  "author": "Jort van Leenen",
   "background": {
     "scripts": [
-      "common/browser-polyfill.js",
       "background/background.js"
-    ],
-    "persistent": false
+    ]
   },
-
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content_scripts/lexigo.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "description": "An instantly accessible dictionary right in your browser.",
+  "homepage_url": "https://github.com/jortvanleenen/lexigo",
+  "icons": {
+    "16": "icons/lexigo-16.png",
+    "32": "icons/lexigo-32.png",
+    "48": "icons/lexigo-48.png",
+    "64": "icons/lexigo-64.png",
+    "128": "icons/lexigo-128.png"
+  },
+  "manifest_version": 3,
+  "name": "Lexigo",
+  "options_ui": {
+    "page": "options/options.html"
+  },
   "permissions": [
-    "storage",
-    "https://www.google.com/"
-  ]
+    "storage"
+  ],
+  "version": "1.0.0"
 }

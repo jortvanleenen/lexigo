@@ -15,8 +15,6 @@ const DEFAULT_LANGUAGE = 'en',
     KEY_COMMAND = 'Command',
     KEY_META = 'meta';
 
-
-
 function saveOptions(e) {
     browser.storage.local.set({
         language: document.querySelector("#language-selector").value,
@@ -31,24 +29,24 @@ function saveOptions(e) {
     }).then(showSaveStatusAnimation);
 
     e.preventDefault();
-  }
-  
-  function restoreOptions() {
+}
+
+function restoreOptions() {
     let storageItem = browser.storage.local.get();
 
     storageItem.then((results) => {
         let language = results.language,
             interaction = results.interaction || {},
-            history = results.history || { enabled: IS_HISTORY_ENABLED_BY_DEFAULT },
+            history = results.history || {enabled: IS_HISTORY_ENABLED_BY_DEFAULT},
             definitions = results.definitions || {};
-        
+
         // language
         document.querySelector("#language-selector").value = language || DEFAULT_LANGUAGE;
 
         // interaction
         // document.querySelector("#popup-dblclick-checkbox").checked = interaction.dblClick.enabled;
         document.querySelector("#popup-dblclick-key").value = (interaction.dblClick && interaction.dblClick.key) || DEFAULT_TRIGGER_KEY;
-        
+
         // document.querySelector("#popup-select-checkbox").checked = interaction.select.enabled;
         // document.querySelector("#popup-select-key").value = interaction.select.key;
 
@@ -56,18 +54,20 @@ function saveOptions(e) {
         document.querySelector("#store-history-checkbox").checked = history.enabled;
         document.querySelector("#num-words-in-history").innerText = Object.keys(definitions).length;
     });
-  }
-  
-  function downloadHistory (e) {
-    let fileContent = "" 
-        storageItem = browser.storage.local.get("definitions"),
+}
+
+function downloadHistory(e) {
+    let fileContent = ""
+    storageItem = browser.storage.local.get("definitions"),
         anchorTag = document.querySelector("#download-history-link");
 
     storageItem.then((results) => {
         let definitions = results.definitions || {};
 
         for (definition in definitions) {
-            if (!definitions.hasOwnProperty(definition)) { return; }
+            if (!definitions.hasOwnProperty(definition)) {
+                return;
+            }
 
             fileContent += definition;
             fileContent += "\t";
@@ -76,7 +76,7 @@ function saveOptions(e) {
             fileContent += "\n";
         }
 
-        anchorTag.href = window.URL.createObjectURL(new Blob([fileContent],{
+        anchorTag.href = window.URL.createObjectURL(new Blob([fileContent], {
             type: "text/plain"
         }));
 
@@ -84,9 +84,9 @@ function saveOptions(e) {
     });
 
     e.preventDefault();
-  }
+}
 
-  function resetOptions (e) {
+function resetOptions(e) {
     browser.storage.local.set({
         language: DEFAULT_LANGUAGE,
         interaction: {
@@ -100,32 +100,32 @@ function saveOptions(e) {
     }).then(restoreOptions);
 
     e.preventDefault();
-  }
+}
 
-  function clearHistory(e) {
-    browser.storage.local.set({ definitions: {} });
-
+function clearHistory(e) {
+    browser.storage.local.set({definitions: {}})
+        .then(restoreOptions);
     e.preventDefault();
-  }
+}
 
-  function showSaveStatusAnimation () {
+function showSaveStatusAnimation() {
     SAVE_STATUS.style.setProperty("-webkit-transition", "opacity 0s ease-out");
     SAVE_STATUS.style.opacity = 1;
-    window.setTimeout(function() {
+    window.setTimeout(function () {
         SAVE_STATUS.style.setProperty("-webkit-transition", "opacity 0.4s ease-out");
         SAVE_STATUS.style.opacity = 0
     }, 1500);
-  }
+}
 
-  document.addEventListener('DOMContentLoaded', restoreOptions);
+document.addEventListener('DOMContentLoaded', restoreOptions);
 
-  CLEAR_HISTORY_BUTTON.addEventListener("click", clearHistory);
-  DOWNLOAD_HISTORY_BUTTON.addEventListener("click", downloadHistory);
+CLEAR_HISTORY_BUTTON.addEventListener("click", clearHistory);
+DOWNLOAD_HISTORY_BUTTON.addEventListener("click", downloadHistory);
 
-  SAVE_OPTIONS_BUTTON.addEventListener("click", saveOptions);
-  RESET_OPTIONS_BUTTON.addEventListener("click", resetOptions);
+SAVE_OPTIONS_BUTTON.addEventListener("click", saveOptions);
+RESET_OPTIONS_BUTTON.addEventListener("click", resetOptions);
 
-  if (window.navigator.platform.toLowerCase().includes(OS_MAC)) {
+if (window.navigator.platform.toLowerCase().includes(OS_MAC)) {
     document.getElementById("popup-dblclick-key-ctrl").textContent = KEY_COMMAND;
     document.getElementById("popup-dblclick-key-ctrl").value = KEY_META;
-  }
+}
